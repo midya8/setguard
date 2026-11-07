@@ -22,7 +22,38 @@ The shift arm keeps probabilities unchanged but assigns the least-probable
 class as truth. It is an intentional failure demonstration, not a realistic
 drift estimate. Fixtures and seeds are development choices, not a final benchmark.
 
-## What the guarantee means
+## Optional label-conditional mode
+
+```bash
+python -m setguard fit --input examples/calibration.json --alpha 0.1 --mode classwise > classwise.json
+```
+
+API: `fit(calibration, alpha=.1, mode="classwise")`. Pooled mode stays the
+default and keeps its version-1 artifacts. Classwise mode uses a version-2
+artifact with `class_counts`, `ranks` and `thresholds` in class-name order.
+Each threshold uses only calibration rows whose true label is that class.
+Absent classes, or classes with too few rows for the requested rank, get a
+null threshold and are always included. There is no pooled fallback.
+
+This standard classwise/Mondrian construction targets label-conditional
+coverage under exchangeability within each label and a predictor fixed
+independently of calibration. It averages over calibration/test randomness;
+it does not promise every realized class rate exceeds the target, input-
+conditional coverage, fixed-calibration coverage or validity under shift.
+Class names/order alone cannot verify these assumptions. Rare classes can
+make sets much larger or force inclusion on every row.
+
+On the same development fixture, class counts are [43,37,50,35,35]. Classwise
+empirical coverage is 0.9285 and mean size 3.1095 (pooled: 0.9235 and 3.017).
+Class d's realized coverage is only 0.8859, below the 0.9 target. This finite
+split does not prove or refute the procedure's population coverage theorem,
+and is not evidence that classwise mode always improves coverage or size.
+
+Reference: [Class-Conditional Conformal Prediction with Many Classes](https://www.stat.berkeley.edu/~ryantibs/papers/classconf.pdf),
+description of standard/classwise and Mondrian methods. This repository uses
+the standard classwise construction, not that paper's clustered method.
+
+## What the pooled guarantee means
 
 For a predictor/score fixed independently of calibration, exchangeable
 calibration and fresh test scores give **marginal** coverage at least
@@ -68,7 +99,7 @@ sets = predict(model, unlabeled)  # lists of integer class indices
 metrics = evaluate(model, held_out_test)
 ```
 
-Artifacts contain version/method, alpha, calibration count, corrected rank,
+Pooled artifacts contain version/method, alpha, calibration count, corrected rank,
 class names and threshold. A null threshold denotes the all-label boundary
 when the requested rank exceeds the calibration count. Empty sets are allowed:
 no hidden argmax fallback changes the algorithm. Evaluation includes per-class
@@ -89,7 +120,7 @@ python -m unittest discover -s tests -v
 bash examples/demo.sh
 ```
 
-20 tests: exact rank boundaries, ties, all-label fallback, empty/nested sets,
+31 tests: exact rank boundaries, ties, all-label fallback, empty/nested sets,
 artifact round trips, class ordering, invalid inputs, per-class reporting,
 exhaustive tied-score rank audit, CLI/error behavior and pinned fixture results.
 CI runs tests on Python 3.10-3.13 and the offline demo. The demo checks both a
@@ -103,6 +134,6 @@ Boundary/tie rank formulation: [finite-sample marginal coverage statement and pr
 This repository is an original small implementation of the standard method,
 not a new conformal algorithm and not copied from the authors' code.
 
-No APS/RAPS, group-conditional guarantee, adaptive online calibration,
+No APS/RAPS, arbitrary-group or input-conditional guarantee, adaptive online calibration,
 regression intervals, leakage detection, drift alarm or deployment validation.
 See [DESIGN.md](DESIGN.md). MIT licensed.
