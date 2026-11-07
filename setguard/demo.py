@@ -25,7 +25,10 @@ def sample(n, seed, shifted=False):
 def run_demo():
     calibration = sample(200, 11)
     model = fit(calibration, alpha=.1)
+    classwise = fit(calibration, alpha=.1, mode='classwise')
     return {'artifact': model,
+            'classwise_artifact': classwise,
+            'classwise_same_generator': evaluate(classwise, sample(2000, 29)),
             'same_generator': evaluate(model, sample(2000, 29)),
             'adversarial_label_shift': evaluate(model, sample(2000, 29, shifted=True)),
             'rank_audit': rank_audit([i / 20 for i in range(21)], .1),
