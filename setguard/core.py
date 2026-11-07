@@ -59,9 +59,21 @@ def validate(data, labeled):
     return rows
 
 
-def fit(calibration, alpha=.1):
+def fit(calibration, alpha=.1, mode="pooled"):
     rows = validate(calibration, True)
+    if mode not in ('pooled', 'classwise'):
+        raise ValueError('mode must be pooled or classwise')
+    _alpha(alpha)
     scores = [1 - row[y] for row, y in zip(rows, calibration['labels'])]
+    if mode == 'classwise':
+        groups = [[score for score, y in zip(scores, calibration['labels']) if y == k]
+                  for k in range(len(calibration['class_names']))]
+        return {'version': 2, 'method': 'classwise-split-conformal-1-minus-p',
+                'alpha': alpha, 'calibration_n': len(rows),
+                'class_names': list(calibration['class_names']),
+                'class_counts': [len(group) for group in groups],
+                'ranks': [corrected_rank(len(group), alpha) if group else 1 for group in groups],
+                'thresholds': [threshold(group, alpha) if group else None for group in groups]}
     return {'version': 1, 'method': 'split-conformal-1-minus-p',
             'alpha': alpha, 'calibration_n': len(rows),
             'rank': corrected_rank(len(rows), alpha),
@@ -69,6 +81,9 @@ def fit(calibration, alpha=.1):
 
 
 def validate_model(model):
+    if isinstance(model, dict) and type(model.get('version')) is int and model['version'] == 2:
+        _validate_classwise(model)
+        return
     fields = {'version', 'method', 'alpha', 'calibration_n', 'rank', 'class_names', 'threshold'}
     if not isinstance(model, dict) or set(model) != fields:
         raise ValueError('invalid artifact fields')
@@ -91,8 +106,8 @@ def predict(model, data):
     rows = validate(data, False)
     if data['class_names'] != model['class_names']:
         raise ValueError('class_names must match artifact in the same order')
-    q = model['threshold']
-    return [[j for j, p in enumerate(row) if q is None or 1 - p <= q] for row in rows]
+    qs = model['thresholds'] if model['version'] == 2 else [model['threshold']] * len(model['class_names'])
+    return [[j for j, p in enumerate(row) if qs[j] is None or 1 - p <= qs[j]] for row in rows]
 
 
 def evaluate(model, test):
@@ -107,6 +122,9 @@ def evaluate(model, test):
         per_class.append({'class_name': name, 'n': len(indices),
                           'coverage': sum(hits[i] for i in indices) / len(indices) if indices else None})
     return {'n': n, 'target_marginal_coverage': 1 - model['alpha'],
+            'method': model['method'],
+            'target_scope': 'within true label, over calibration/test randomness' if model['version'] == 2
+                            else 'marginal over calibration/test randomness',
             'coverage': sum(hits) / n, 'mean_set_size': sum(sizes) / n,
             'empty_rate': sizes.count(0) / n, 'singleton_rate': sizes.count(1) / n,
             'size_histogram': {str(size): sizes.count(size) for size in sorted(set(sizes))},
@@ -114,8 +132,10 @@ def evaluate(model, test):
                                    for row, y in zip(rows, ys)) / n,
             'per_class': per_class,
             'scope': 'Empirical metrics on these rows, not a guarantee for this fixed split, '
-                     'each class/input, shifted data or deployment. Marginal coverage requires '
-                     'exchangeable calibration/test scores and a predictor fixed independently of calibration.'}
+                     'each observed class rate/input, shifted data or deployment. Pooled marginal or '
+                     'classwise label-conditional coverage requires '
+                     'exchangeable calibration/test scores (within label for classwise mode) and '
+                     'a predictor fixed independently of calibration.'}
 
 
 def rank_audit(scores, alpha):
@@ -131,3 +151,29 @@ def rank_audit(scores, alpha):
     k = corrected_rank(len(scores) - 1, alpha)
     return {'positions': len(scores), 'covered': covered, 'coverage': covered / len(scores),
             'rank_lower_bound': k / len(scores)}
+
+
+def _validate_classwise(model):
+    fields = {'version', 'method', 'alpha', 'calibration_n', 'class_names',
+              'class_counts', 'ranks', 'thresholds'}
+    if set(model) != fields or model['method'] != 'classwise-split-conformal-1-minus-p':
+        raise ValueError('invalid classwise artifact fields/method')
+    _names(model['class_names']); _alpha(model['alpha'])
+    width = len(model['class_names'])
+    if any(not isinstance(model[key], list) or len(model[key]) != width
+           for key in ['class_counts', 'ranks', 'thresholds']):
+        raise ValueError('classwise artifact arrays must match class_names')
+    counts = model['class_counts']
+    if any(type(n) is not int or n < 0 for n in counts) or sum(counts) < 1:
+        raise ValueError('class counts must be nonnegative with positive total')
+    if type(model['calibration_n']) is not int or model['calibration_n'] != sum(counts):
+        raise ValueError('class counts must sum to calibration_n')
+    for n, rank, q in zip(counts, model['ranks'], model['thresholds']):
+        expected = corrected_rank(n, model['alpha']) if n else 1
+        if type(rank) is not int or rank != expected:
+            raise ValueError('classwise rank mismatch')
+        if rank > n:
+            if q is not None:
+                raise ValueError('insufficient class requires null threshold')
+        elif type(q) not in (int, float) or not math.isfinite(q) or not 0 <= q <= 1:
+            raise ValueError('class threshold must be finite in [0,1]')
