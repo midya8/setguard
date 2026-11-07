@@ -20,6 +20,7 @@ def main(argv=None):
     f = sub.add_parser('fit')
     f.add_argument('--input', required=True)
     f.add_argument('--alpha', type=float, default=.1)
+    f.add_argument('--mode', choices=['pooled', 'classwise'], default='pooled')
     for name in ['predict', 'evaluate']:
         p = sub.add_parser(name)
         p.add_argument('--model', required=True)
@@ -29,7 +30,7 @@ def main(argv=None):
         if args.command == 'demo':
             result = run_demo()
         elif args.command == 'fit':
-            result = fit(load(args.input), args.alpha)
+            result = fit(load(args.input), args.alpha, args.mode)
         else:
             if args.model == '-' and args.input == '-':
                 raise ValueError('model and input cannot both use stdin')
