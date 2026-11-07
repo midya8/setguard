@@ -53,10 +53,41 @@ under exchangeability and a predictor fixed independently of calibration.
 It is not conditional on a particular calibration split, class or input.
 Empirical test coverage can fall below target. Tuning alpha/score/model after
 inspecting calibration/test data invalidates a naive application of the bound.
-No protected-group, drift or time-series coverage claim is made. Set size
+No protected-attribute, drift or time-series coverage claim is made. Classwise mode is only conditioned on the true label, not arbitrary protected groups. Set size
 reflects a tradeoff and can reach all classes; large sets may be unhelpful.
 
 ## Sources
 
 - https://arxiv.org/html/2107.07511 (Angelopoulos and Bates, Section1, AppendixD)
 - https://androma.org/theorems/17354 (rank boundary and tied-score lower bound)
+
+## Optional label-conditional mode
+
+```bash
+python -m setguard fit --input examples/calibration.json --alpha 0.1 --mode classwise > classwise.json
+```
+
+API: `fit(calibration, alpha=.1, mode="classwise")`. Pooled mode stays the
+default and keeps its version-1 artifacts. Classwise mode uses a version-2
+artifact with `class_counts`, `ranks` and `thresholds` in class-name order.
+Each threshold uses only calibration rows whose true label is that class.
+Absent classes, or classes with too few rows for the requested rank, get a
+null threshold and are always included. There is no pooled fallback.
+
+This standard classwise/Mondrian construction targets label-conditional
+coverage under exchangeability within each label and a predictor fixed
+independently of calibration. It averages over calibration/test randomness;
+it does not promise every realized class rate exceeds the target, input-
+conditional coverage, fixed-calibration coverage or validity under shift.
+Class names/order alone cannot verify these assumptions. Rare classes can
+make sets much larger or force inclusion on every row.
+
+On the same development fixture, class counts are [43,37,50,35,35]. Classwise
+empirical coverage is 0.9285 and mean size 3.1095 (pooled: 0.9235 and 3.017).
+Class d's realized coverage is only 0.8859, below the 0.9 target. This finite
+split does not prove or refute the procedure's population coverage theorem,
+and is not evidence that classwise mode always improves coverage or size.
+
+Reference: [Class-Conditional Conformal Prediction with Many Classes](https://www.stat.berkeley.edu/~ryantibs/papers/classconf.pdf),
+description of standard/classwise and Mondrian methods. This repository uses
+the standard classwise construction, not that paper's clustered method.
