@@ -56,7 +56,7 @@ Primary references, consulted November 8, 2026:
 - *Class-Conditional Conformal Prediction With Many Classes*: classwise calibration, rare-class infinity boundaries and distinction from realized fixed-split rates. https://www.stat.berkeley.edu/~ryantibs/papers/classconf.pdf
 - Angelopoulos et al., public implementation/tutorial repository, useful context and attribution rather than a dependency. https://github.com/aangelopoulos/conformal-prediction
 - Oliveira et al., *Split Conformal Prediction and Non-Exchangeable Data*, JMLR 25(2024): extensions require their stated concentration/decoupling assumptions and penalties. Not implemented here. https://www.jmlr.org/papers/volume25/23-1553/23-1553.pdf
-- Romano et al., *Classification with Valid and Adaptive Coverage*: different score construction/adaptive method. Not implemented or claimed here. https://arxiv.org/pdf/2005.06095v3.pdf
+- Kuchibhotla, *Exchangeability, Conformal Prediction, and Rank Tests*: exchangeability and the rank argument behind finite-sample validity. https://arxiv.org/pdf/2005.06095v3.pdf
 - Cauchois, Gupta and Duchi, *Knowing what You Know*, JMLR 22(2021): marginal validity can mask uneven conditional coverage. Their quantile-regression methods are not implemented here. https://www.jmlr.org/papers/volume22/20-753/20-753.pdf
 
 Attribution is not endorsement. MIT implementation; no private data, paid service or external model API.
