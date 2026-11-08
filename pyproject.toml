@@ -1,6 +1,6 @@
 [project]
 name = "setguard"
-version = "0.1.0"
+version = "0.2.0"
 description = "Split-conformal classification sets with finite-sample rank audits"
 requires-python = ">=3.10"
 license = {text = "MIT"}
@@ -8,3 +8,9 @@ license = {text = "MIT"}
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["setguard*"]
+
+[tool.setuptools.package-data]
+setguard = ["artifacts/*.json"]

@@ -137,3 +137,10 @@ not a new conformal algorithm and not copied from the authors' code.
 No APS/RAPS, arbitrary-group or input-conditional guarantee, adaptive online calibration,
 regression intervals, leakage detection, drift alarm or deployment validation.
 See [DESIGN.md](DESIGN.md). MIT licensed.
+
+
+## v0.2: inspect every inclusion
+
+The bounded score/rank/inclusion ledger adds a no-API static browser under `docs/` and two CLI commands (`audit`, `rank-demo`). Inspect pooled/classwise thresholds, all equality ties, absent-label infinity boundaries, every candidate-label decision, 19 sampled alpha points and every held-position rank check across five public synthetic cases. The original implementation, example data, three empirical controls and original tests remain unchanged.
+
+See [LEDGER.md](LEDGER.md) for equations, input schema, exact limits, primary references and reproduction. The independent browser/native checks cover 95 case/alpha witnesses; 41 Python and four Node/actual-Chrome tests plus isolated wheel reproduction guard the release. These are deterministic arithmetic witnesses, not a guarantee for a fixed candidate or deployment.

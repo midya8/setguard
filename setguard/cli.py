@@ -4,19 +4,34 @@ import json
 import sys
 from .core import fit, predict, evaluate
 from .demo import run_demo
+from .ledger import audit
+from .ledger_fixtures import bundle
 
 
-def load(path):
+def _unique(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError('duplicate JSON key: '+key)
+        result[key] = value
+    return result
+
+
+def load(path, strict=False):
     if path == '-':
-        return json.load(sys.stdin)
+        return json.load(sys.stdin, object_pairs_hook=_unique if strict else dict)
     with open(path, encoding='utf-8') as source:
-        return json.load(source)
+        return json.load(source, object_pairs_hook=_unique if strict else dict)
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='setguard')
     sub = parser.add_subparsers(dest='command', required=True)
     sub.add_parser('demo')
+    sub.add_parser('rank-demo')
+    a = sub.add_parser('audit')
+    a.add_argument('--input', required=True)
+    a.add_argument('--alpha', type=float, default=.1)
     f = sub.add_parser('fit')
     f.add_argument('--input', required=True)
     f.add_argument('--alpha', type=float, default=.1)
@@ -29,6 +44,13 @@ def main(argv=None):
     try:
         if args.command == 'demo':
             result = run_demo()
+        elif args.command == 'rank-demo':
+            result = bundle()
+        elif args.command == 'audit':
+            payload = load(args.input, strict=True)
+            if not isinstance(payload, dict) or set(payload) != {'calibration', 'candidates'}:
+                raise ValueError('audit input requires exactly calibration and candidates')
+            result = audit(payload['calibration'], payload['candidates'], args.alpha)
         elif args.command == 'fit':
             result = fit(load(args.input), args.alpha, args.mode)
         else:
