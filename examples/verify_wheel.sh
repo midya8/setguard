@@ -14,7 +14,7 @@ from setguard.ledger_fixtures import bundle,witnesses
 from setguard.ledger_export import project,verify
 import setguard
 root=pathlib.Path(setguard.__file__).parent/'artifacts'
-assert bundle()==json.loads((root/'rank-meta.json').read_text())
+verify(bundle(),json.loads((root/'rank-meta.json').read_text()))
 a=[r for p in sorted(root.glob('rank-[0-9]*.json')) for r in json.loads(p.read_text())]
 b=[{'case':w['case'],'alpha':w['alpha'],'witness':project(w['audit'])}for w in witnesses()]
 key=lambda w:(w['case'],w['alpha'])
