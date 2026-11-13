@@ -1,11 +1,23 @@
 # SetGuard
 
-Split-conformal classification sets from scratch. Give it a held-out calibration
-sample and a fixed classifier's probabilities; get a versioned JSON artifact,
-unlabeled prediction sets and coverage/size diagnostics. Pure Python 3.10+,
-no dependencies, no API keys, no model downloads.
+SetGuard turns a fixed classifier's probabilities and a separate calibration
+sample into split-conformal classification sets. Save the fitted thresholds as
+JSON, predict without labels and inspect each score/rank/inclusion decision.
+Python 3.10+, standard library only. No training or model API.
 
-## Measured development demonstration
+| Question | Start here | What it does not check |
+| --- | --- | --- |
+| Why is this candidate label included? | [Live inclusion ledger](https://midya8.github.io/setguard/) and [ledger contract](LEDGER.md) | Arithmetic witnesses do not establish exchangeability or validate a deployment. |
+| Should every label use the same threshold? | [Pooled guarantee](#what-the-pooled-guarantee-means) and [classwise mode](#optional-label-conditional-mode) | Neither promises coverage for every input or fixed calibration split. |
+| How do I save and use a fitted artifact? | [Fit and predict](#fit-save-predict-without-labels) | Schema checks do not establish data lineage or a predictor fixed independently of calibration. |
+
+## Inspect every inclusion (0.2)
+
+The bounded score/rank/inclusion ledger adds a no-API static browser under `docs/` and two CLI commands (`audit`, `rank-demo`). Inspect pooled/classwise thresholds, all equality ties, absent-label infinity boundaries, every candidate-label decision, 19 sampled alpha points and every held-position rank check across five public synthetic cases. The original implementation, example data, three empirical controls and original tests remain unchanged.
+
+See [LEDGER.md](LEDGER.md) for equations, input schema, exact limits, primary references and reproduction. The independent browser/native checks cover 95 case/alpha witnesses; 41 Python and four Node/actual-Chrome tests plus isolated wheel reproduction guard the release. These are deterministic arithmetic witnesses, not a guarantee for a fixed candidate or deployment.
+
+## Fixed development example
 
 Run `python -m setguard demo` or `bash examples/demo.sh`.
 
@@ -120,10 +132,10 @@ python -m unittest discover -s tests -v
 bash examples/demo.sh
 ```
 
-31 tests: exact rank boundaries, ties, all-label fallback, empty/nested sets,
+The original 31 tests cover exact rank boundaries, ties, all-label fallback, empty/nested sets,
 artifact round trips, class ordering, invalid inputs, per-class reporting,
 exhaustive tied-score rank audit, CLI/error behavior and pinned fixture results.
-CI runs tests on Python 3.10-3.13 and the offline demo. The demo checks both a
+The current suite has 41 Python tests and four Node/actual-Chrome tests. CI runs Python 3.10-3.13, the offline demo, browser checks and installed-wheel reproduction. The demo checks both a
 passing same-generator gate and a failing shifted-coverage gate.
 
 ## Attribution and limits
@@ -137,10 +149,3 @@ not a new conformal algorithm and not copied from the authors' code.
 No APS/RAPS, arbitrary-group or input-conditional guarantee, adaptive online calibration,
 regression intervals, leakage detection, drift alarm or deployment validation.
 See [DESIGN.md](DESIGN.md). MIT licensed.
-
-
-## v0.2: inspect every inclusion
-
-The bounded score/rank/inclusion ledger adds a no-API static browser under `docs/` and two CLI commands (`audit`, `rank-demo`). Inspect pooled/classwise thresholds, all equality ties, absent-label infinity boundaries, every candidate-label decision, 19 sampled alpha points and every held-position rank check across five public synthetic cases. The original implementation, example data, three empirical controls and original tests remain unchanged.
-
-See [LEDGER.md](LEDGER.md) for equations, input schema, exact limits, primary references and reproduction. The independent browser/native checks cover 95 case/alpha witnesses; 41 Python and four Node/actual-Chrome tests plus isolated wheel reproduction guard the release. These are deterministic arithmetic witnesses, not a guarantee for a fixed candidate or deployment.
