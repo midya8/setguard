@@ -15,7 +15,24 @@ Python 3.10+, standard library only. No training or model API.
 
 The bounded score/rank/inclusion ledger adds a no-API static browser under `docs/` and two CLI commands (`audit`, `rank-demo`). Inspect pooled/classwise thresholds, all equality ties, absent-label infinity boundaries, every candidate-label decision, 19 sampled alpha points and every held-position rank check across five public synthetic cases. The original implementation, example data, three empirical controls and original tests remain unchanged.
 
-See [LEDGER.md](LEDGER.md) for equations, input schema, exact limits, primary references and reproduction. The independent browser/native checks cover 95 case/alpha witnesses; 41 Python and four Node/actual-Chrome tests plus isolated wheel reproduction guard the release. These are deterministic arithmetic witnesses, not a guarantee for a fixed candidate or deployment.
+See [LEDGER.md](LEDGER.md) for equations, input schema, exact limits, primary references and reproduction. The independent browser/native checks cover 95 case/alpha witnesses; 44 Python and four Node/actual-Chrome tests plus isolated wheel reproduction guard the release. These are deterministic arithmetic witnesses, not a guarantee for a fixed candidate or deployment.
+
+## Input symmetry checks
+
+Three regression tests reuse the five public cases at 19 alpha values in both
+pooled and classwise modes. They check all class-column permutations (5,472
+fits), 380 reversed/rotated calibration orders, 190 reversed candidate orders
+and 180 adjacent-alpha nesting transitions. Class names, probability columns
+and true-label indices move together. Classwise counts, ranks and thresholds
+must move with their classes; prediction sets are compared by class name,
+not by the new column index. The tests include ties, empty sets, absent classes
+and null (infinite) thresholds, and check that relabeling leaves inputs unchanged.
+
+These are finite consistency checks, not independent threshold references or
+coverage evidence. They do not test a deployment's exchangeability assumption.
+Argmax tie-breaking is not compared: the core uses the first maximal column,
+so its reported accuracy need not survive a change in tied-column order.
+The existing exact-rank and empirical controls remain needed.
 
 ## Fixed development example
 
