@@ -152,8 +152,21 @@ bash examples/demo.sh
 The original 31 tests cover exact rank boundaries, ties, all-label fallback, empty/nested sets,
 artifact round trips, class ordering, invalid inputs, per-class reporting,
 exhaustive tied-score rank audit, CLI/error behavior and pinned fixture results.
-The current suite has 41 Python tests and four Node/actual-Chrome tests. CI runs Python 3.10-3.13, the offline demo, browser checks and installed-wheel reproduction. The demo checks both a
+The current suite has 44 Python tests and four Node/actual-Chrome tests. CI runs Python 3.10-3.13, the offline demo, browser checks and installed-wheel reproduction. The demo checks both a
 passing same-generator gate and a failing shifted-coverage gate.
+
+Run `python examples/check_installed.py` to build a wheel, install it in a new
+environment and run all 44 tests outside the checkout. It checks eight module
+origins before and after the suite. Data-only archive copies let the existing
+95-witness regression run without copying the library's Python source.
+It also compares nine complete CLI reports with the source implementation:
+`demo`, `rank-demo`, `audit`, and `fit`/`predict`/`evaluate` in both pooled and
+classwise modes. Saved models are JSON round-tripped for prediction and
+evaluation. This checks packaging and replay, not an independent statistical
+reference or a coverage guarantee. CI keeps the original wheel smoke job and
+runs this full installed suite separately. The helper needs pip, setuptools
+and wheel to build the package; SetGuard itself still uses the standard library.
+
 
 ## Attribution and limits
 
