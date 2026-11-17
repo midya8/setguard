@@ -1,181 +1,34 @@
-# SetGuard
+# setguard
 
-SetGuard turns a fixed classifier's probabilities and a separate calibration
-sample into split-conformal classification sets. Save the fitted thresholds as
-JSON, predict without labels and inspect each score/rank/inclusion decision.
-Python 3.10+, standard library only. No training or model API.
-
-| Question | Start here | What it does not check |
-| --- | --- | --- |
-| Why is this candidate label included? | [Live inclusion ledger](https://midya8.github.io/setguard/) and [ledger contract](LEDGER.md) | Arithmetic witnesses do not establish exchangeability or validate a deployment. |
-| Should every label use the same threshold? | [Pooled guarantee](#what-the-pooled-guarantee-means) and [classwise mode](#optional-label-conditional-mode) | Neither promises coverage for every input or fixed calibration split. |
-| How do I save and use a fitted artifact? | [Fit and predict](#fit-save-predict-without-labels) | Schema checks do not establish data lineage or a predictor fixed independently of calibration. |
-
-## Inspect every inclusion (0.2)
-
-The bounded score/rank/inclusion ledger adds a no-API static browser under `docs/` and two CLI commands (`audit`, `rank-demo`). Inspect pooled/classwise thresholds, all equality ties, absent-label infinity boundaries, every candidate-label decision, 19 sampled alpha points and every held-position rank check across five public synthetic cases. The original implementation, example data, three empirical controls and original tests remain unchanged.
-
-See [LEDGER.md](LEDGER.md) for equations, input schema, exact limits, primary references and reproduction. The independent browser/native checks cover 95 case/alpha witnesses; 44 Python and four Node/actual-Chrome tests plus isolated wheel reproduction guard the release. These are deterministic arithmetic witnesses, not a guarantee for a fixed candidate or deployment.
-
-## Input symmetry checks
-
-Three regression tests reuse the five public cases at 19 alpha values in both
-pooled and classwise modes. They check all class-column permutations (5,472
-fits), 380 reversed/rotated calibration orders, 190 reversed candidate orders
-and 180 adjacent-alpha nesting transitions. Class names, probability columns
-and true-label indices move together. Classwise counts, ranks and thresholds
-must move with their classes; prediction sets are compared by class name,
-not by the new column index. The tests include ties, empty sets, absent classes
-and null (infinite) thresholds, and check that relabeling leaves inputs unchanged.
-
-These are finite consistency checks, not independent threshold references or
-coverage evidence. They do not test a deployment's exchangeability assumption.
-Argmax tie-breaking is not compared: the core uses the first maximal column,
-so its reported accuracy need not survive a change in tied-column order.
-The existing exact-rank and empirical controls remain needed.
-
-## Fixed development example
-
-Run `python -m setguard demo` or `bash examples/demo.sh`.
-
-| Arm | Rows | Empirical coverage | Mean set size | Argmax accuracy |
-| --- | ---: | ---: | ---: | ---: |
-| Same generator, independent seed | 2000 | 0.9235 | 3.017 | 0.4960 |
-| Deliberately adversarial label shift | 2000 | 0.0760 | 3.017 | 0.0000 |
-
-The calibration split has 200 rows, alpha=0.1, corrected rank 181, and
-threshold 0.9936492756846956. Five classes; the fixed predictor cubes an
-underlying probability vector, making it overconfident. There is no training.
-Coverage costs larger sets: argmax emits one class; SetGuard averages 3.017.
-The shift arm keeps probabilities unchanged but assigns the least-probable
-class as truth. It is an intentional failure demonstration, not a realistic
-drift estimate. Fixtures and seeds are development choices, not a final benchmark.
-
-## Optional label-conditional mode
+Split conformal prediction for classifiers, in plain Python. Instead of one predicted label you get a set of labels, sized so the true label lands in it about 90% of the time (or whatever `alpha` you pick). You need a model that outputs class probabilities and a held-out labeled calibration set; setguard never trains anything.
 
 ```bash
-python -m setguard fit --input examples/calibration.json --alpha 0.1 --mode classwise > classwise.json
+python -m setguard fit --input examples/calibration.json --alpha 0.1 > model.json
+python -m setguard predict --model model.json --input unlabeled.json
+python -m setguard evaluate --model model.json --input test.json
 ```
 
-API: `fit(calibration, alpha=.1, mode="classwise")`. Pooled mode stays the
-default and keeps its version-1 artifacts. Classwise mode uses a version-2
-artifact with `class_counts`, `ranks` and `thresholds` in class-name order.
-Each threshold uses only calibration rows whose true label is that class.
-Absent classes, or classes with too few rows for the requested rank, get a
-null threshold and are always included. There is no pooled fallback.
+`fit` saves the threshold as a small JSON file, and `predict` doesn't need labels. Evaluate on a fresh labeled split, not the calibration rows.
 
-This standard classwise/Mondrian construction targets label-conditional
-coverage under exchangeability within each label and a predictor fixed
-independently of calibration. It averages over calibration/test randomness;
-it does not promise every realized class rate exceeds the target, input-
-conditional coverage, fixed-calibration coverage or validity under shift.
-Class names/order alone cannot verify these assumptions. Rare classes can
-make sets much larger or force inclusion on every row.
+## Demo
 
-On the same development fixture, class counts are [43,37,50,35,35]. Classwise
-empirical coverage is 0.9285 and mean size 3.1095 (pooled: 0.9235 and 3.017).
-Class d's realized coverage is only 0.8859, below the 0.9 target. This finite
-split does not prove or refute the procedure's population coverage theorem,
-and is not evidence that classwise mode always improves coverage or size.
+`python -m setguard demo` builds a deliberately overconfident 5-class predictor, calibrates on 200 rows at alpha 0.1, and tests on 2,000 more:
 
-Reference: [Class-Conditional Conformal Prediction with Many Classes](https://www.stat.berkeley.edu/~ryantibs/papers/classconf.pdf),
-description of standard/classwise and Mondrian methods. This repository uses
-the standard classwise construction, not that paper's clustered method.
+| test data | coverage | mean set size | argmax accuracy |
+|---|---:|---:|---:|
+| same distribution | 0.924 | 3.02 | 0.496 |
+| labels deliberately flipped to the least likely class | 0.076 | 3.02 | 0.000 |
 
-## What the pooled guarantee means
+So you get the coverage you asked for, at the price of sets around three labels wide when the model is this bad. The second row is the failure case on purpose: the guarantee only holds if test data looks like calibration data.
 
-For a predictor/score fixed independently of calibration, exchangeable
-calibration and fresh test scores give **marginal** coverage at least
-`1-alpha`, averaged over calibration and test randomness. This is a statement
-about the procedure, not a promise that every realized test split achieves
-the target. It does not give coverage for every class, every input, fixed
-calibration dataset, time series or distribution shift. Ties may be conservative.
-No randomized upper coverage bound is claimed.
+## Per-class thresholds
 
-The exact finite rank check holds each of 21 distinct score positions out
-once: 19/21 covered, equal to the rank lower bound 19/21. Tests also exhaust
-all 243 five-position score sequences over {0, 0.5, 1} at five alpha levels.
-This checks the implementation's rank logic, not whether real data are exchangeable.
+`--mode classwise` fits one threshold per class using only that class's calibration rows. On the same demo it reaches 0.929 coverage with mean size 3.11, but class d still came in at 0.886, under the 0.9 target. That's normal for small class counts (35 to 50 rows each here). A class with too few rows gets no threshold and is always included in the set.
 
-## Fit, save, predict without labels
+## What the guarantee is
 
-```bash
-python -m setguard fit --input examples/calibration.json --alpha 0.2 > model.json
-python -m setguard predict --model model.json --input examples/unlabeled.json
-python -m setguard evaluate --model model.json --input examples/calibration.json
-```
+If calibration and test examples are exchangeable and the model was fixed beforehand, coverage is at least 1 - alpha on average over random splits. It isn't per input, per class (unless you use classwise), or protection against drift.
 
-The final command above only demonstrates evaluation syntax on the tiny example;
-reusing calibration rows is not a valid held-out coverage assessment.
-Use a new labeled test split in real work. `--input -` reads stdin.
-Errors exit 2, write stderr and emit no partial JSON.
+The browser page at https://midya8.github.io/setguard/ shows each score, the rank used for the threshold, and why each label made it into a set. LEDGER.md and DESIGN.md have the math.
 
-Calibration/evaluation schema:
-
-```json
-{"class_names": ["cat", "dog"], "probabilities": [[0.9, 0.1], [0.2, 0.8]], "labels": [0, 1]}
-```
-
-Prediction input omits `labels` entirely. Class names and order must match the
-artifact. Rows must be finite in [0,1] and sum to one within 1e-9; they are
-not silently normalized. Schema checks cannot verify independence, provenance,
-a fixed predictor or semantic label correctness.
-
-```python
-from setguard import fit, predict, evaluate
-model = fit(calibration, alpha=0.1)
-sets = predict(model, unlabeled)  # lists of integer class indices
-metrics = evaluate(model, held_out_test)
-```
-
-Pooled artifacts contain version/method, alpha, calibration count, corrected rank,
-class names and threshold. A null threshold denotes the all-label boundary
-when the requested rank exceeds the calibration count. Empty sets are allowed:
-no hidden argmax fallback changes the algorithm. Evaluation includes per-class
-coverage (null for absent classes), size histograms, empty and singleton rates.
-
-## Rank correction
-
-Score: `s(x,y)=1-p(y|x)`. Let `k=ceil((n+1)*(1-alpha))`.
-Use the k-th smallest calibration score, not an interpolated quantile.
-If k=n+1, include all labels. Otherwise include y exactly when `1-p(y|x)<=q`.
-The ceiling uses rational arithmetic for the decimal spelling of alpha to
-avoid accidental extra ranks at float boundaries such as n=99, alpha=0.7.
-
-## Verification
-
-```bash
-python -m unittest discover -s tests -v
-bash examples/demo.sh
-```
-
-The original 31 tests cover exact rank boundaries, ties, all-label fallback, empty/nested sets,
-artifact round trips, class ordering, invalid inputs, per-class reporting,
-exhaustive tied-score rank audit, CLI/error behavior and pinned fixture results.
-The current suite has 44 Python tests and four Node/actual-Chrome tests. CI runs Python 3.10-3.13, the offline demo, browser checks and installed-wheel reproduction. The demo checks both a
-passing same-generator gate and a failing shifted-coverage gate.
-
-Run `python examples/check_installed.py` to build a wheel, install it in a new
-environment and run all 44 tests outside the checkout. It checks eight module
-origins before and after the suite. Data-only archive copies let the existing
-95-witness regression run without copying the library's Python source.
-It also compares nine complete CLI reports with the source implementation:
-`demo`, `rank-demo`, `audit`, and `fit`/`predict`/`evaluate` in both pooled and
-classwise modes. Saved models are JSON round-tripped for prediction and
-evaluation. This checks packaging and replay, not an independent statistical
-reference or a coverage guarantee. CI keeps the original wheel smoke job and
-runs this full installed suite separately. The helper needs pip, setuptools
-and wheel to build the package; SetGuard itself still uses the standard library.
-
-
-## Attribution and limits
-
-Algorithm reference: Anastasios N. Angelopoulos and Stephen Bates,
-[A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification](https://arxiv.org/html/2107.07511), Section 1 and Appendix D.
-Boundary/tie rank formulation: [finite-sample marginal coverage statement and proof](https://androma.org/theorems/17354).
-This repository is an original small implementation of the standard method,
-not a new conformal algorithm and not copied from the authors' code.
-
-No APS/RAPS, arbitrary-group or input-conditional guarantee, adaptive online calibration,
-regression intervals, leakage detection, drift alarm or deployment validation.
-See [DESIGN.md](DESIGN.md). MIT licensed.
+Tests: `python -m unittest discover -s tests` (44 tests).
